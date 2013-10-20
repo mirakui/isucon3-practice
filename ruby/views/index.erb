@@ -5,7 +5,7 @@
 <ul id="memos">
 <% memos.each do |memo| %>
 <li>
-  <a href="<%= url_for('/memo/') %><%= memo['id'] %>"><%= memo["title"] %></a> by <%= memo["username"] %> (<%= memo["created_at"] %>)
+<a href="<%= url_for('/memo/') %><%= memo['id'] %>"><%= memo["title"] %></a> by <%= memo["username"] %> (<%= memo["created_at"] %>)
 </li>
 <% end %>
 </ul>
