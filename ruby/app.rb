@@ -66,15 +66,20 @@ class Isucon3App < Sinatra::Base
     end
 
     def url_for(path)
-      scheme = request.scheme
-      if (scheme == 'http' && request.port == 80 ||
-          scheme == 'https' && request.port == 443)
-        port = ""
-      else
-        port = ":#{request.port}"
+      url_base + path.to_s
+    end
+
+    def url_base
+      @url_base ||= begin
+        scheme = request.scheme
+        if (scheme == 'http' && request.port == 80 ||
+            scheme == 'https' && request.port == 443)
+          port = ""
+        else
+          port = ":#{request.port}"
+        end
+        "#{scheme}://#{request.host}#{port}#{request.script_name}"
       end
-      base = "#{scheme}://#{request.host}#{port}#{request.script_name}"
-      "#{base}#{path}"
     end
   end
 
@@ -83,9 +88,7 @@ class Isucon3App < Sinatra::Base
     user  = get_user
 
     total = mysql.query("SELECT count(*) AS c FROM memos WHERE is_private=0").first["c"]
-    memos = mysql.query(
-      'SELECT memos.id AS id, memos.user AS user, users.username AS username, is_private, updated_at, created_at, SUBSTRING_INDEX(memos.content, "\n", 1) AS title ' \
-      'FROM memos INNER JOIN users ON users.id = memos.user WHERE is_private=0 ORDER BY id DESC LIMIT 100')
+    memos = mysql.query('SELECT title_cache FROM memos WHERE is_private=0 ORDER BY id DESC LIMIT 100')
     erb :index, :layout => :base, :locals => {
       :memos => memos,
       :page  => 0,
@@ -101,10 +104,7 @@ class Isucon3App < Sinatra::Base
     page  = params["page"].to_i
     total = mysql.xquery('SELECT count(*) AS c FROM memos WHERE is_private=0').first["c"]
     first_id = mysql.xquery("SELECT id FROM memos WHERE is_private=0 ORDER BY id DESC LIMIT 1 OFFSET #{(page) * 100}").first['id']
-    puts "first_id = #{first_id}"
-    memos = mysql.query(
-      'SELECT memos.id AS id, memos.user AS user, users.username AS username, is_private, updated_at, created_at, SUBSTRING_INDEX(memos.content, "\n", 1) AS title ' \
-      "FROM memos INNER JOIN users ON users.id = memos.user WHERE memos.id <= #{first_id} AND is_private=0 ORDER BY memos.id DESC LIMIT 100")
+    memos = mysql.xquery("SELECT title_cache FROM memos WHERE memos.id <= #{first_id} AND is_private=0 ORDER BY id DESC LIMIT 100")
     if memos.count == 0
       halt 404, "404 Not Found"
     end
@@ -218,7 +218,20 @@ class Isucon3App < Sinatra::Base
       Time.now,
     )
     memo_id = mysql.last_id
+    mysql.xquery(
+      %Q!UPDATE memos SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', ?, ' (', memos.created_at, ' +0900)') WHERE memos.id = ?!, user['username'], memo_id
+    )
     redirect "/memo/#{memo_id}"
+  end
+
+  get '/update_memo_title' do
+    mysql = connection
+    memos = mysql.xquery(
+      'SELECT memos.id AS id, memos.user AS user, users.username AS username, created_at, SUBSTRING_INDEX(memos.content, "\n", 1) AS title ' \
+      'FROM memos INNER JOIN users ON users.id = memos.user')
+    mysql.xquery(
+      %Q!UPDATE memos INNER JOIN users ON users.id = memos.user SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', users.username, ' (', memos.created_at, ' +0900)')!
+    )
   end
 
   run! if app_file == $0
