@@ -1,5 +1,9 @@
+DROP TABLE IF EXISTS memo_orders;
+CREATE TABLE memo_orders (id int primary key AUTO_INCREMENT, memo_id int);
+
 ALTER TABLE memos ADD INDEX idx1 (user, is_private, id);
 ALTER TABLE memos ADD INDEX idx2 (is_private, id);
+ALTER TABLE memos ADD INDEX idx3 (id, is_private);
 ALTER TABLE memos ADD COLUMN title_cache VARCHAR(200);
 UPDATE memos INNER JOIN users ON users.id = memos.user SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', users.username, ' (', memos.created_at, ' +0900)');
 

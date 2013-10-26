@@ -107,8 +107,8 @@ class Isucon3App < Sinatra::Base
     user  = get_user
 
     page  = [params["page"].to_i, 0].max
-    first_id = mysql.xquery("SELECT id FROM memos WHERE is_private=0 ORDER BY id DESC LIMIT 1 OFFSET #{(page) * 100}").first['id']
-    memos = mysql.xquery("SELECT title_cache FROM memos WHERE memos.id <= #{first_id} AND is_private=0 ORDER BY id DESC LIMIT 100")
+    first_id = mysql.xquery("SELECT memo_id FROM memo_orders WHERE id = ?", page * 100 + 1).first['memo_id']
+    memos = mysql.xquery("SELECT title_cache FROM memos FORCE INDEX (idx3) WHERE id <= #{first_id} AND is_private=0 ORDER BY id DESC LIMIT 100")
     if memos.count == 0
       halt 404, "404 Not Found"
     end
@@ -224,6 +224,9 @@ class Isucon3App < Sinatra::Base
     mysql.xquery(
       %Q!UPDATE memos SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', ?, ' (', memos.created_at, ' +0900)') WHERE memos.id = ?!, user['username'], memo_id
     )
+    if params["is_private"].to_i == 0
+      mysql.xquery("INSERT INTO memo_orders (memo_id) VALUES (?)", memo_id)
+    end
     redirect "/memo/#{memo_id}"
   end
 
@@ -240,6 +243,19 @@ class Isucon3App < Sinatra::Base
     mysql.xquery(
       %Q!UPDATE memos INNER JOIN users ON users.id = memos.user SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', users.username, ' (', memos.created_at, ' +0900)')!
     )
+  end
+
+  get '/update_memo_orders' do
+    ids = []
+    mysql = connection
+    mysql.xquery('TRUNCATE TABLE memo_orders')
+    memos = mysql.xquery('SELECT id FROM memos WHERE is_private=0')
+    #memos.each do |memo|
+    #  mysql.xquery "INSERT INTO memo_orders (memo_id) VALUES #{memo['id']}"
+    #end
+    ids = memos.map {|m| m['id'] }
+    query = "INSERT INTO memo_orders (memo_id) VALUES #{ids.reverse.map {|id| "(#{id})"}.join(',')}"
+    mysql.xquery(query)
   end
 
   run! if app_file == $0
