@@ -12,7 +12,7 @@ class Isucon3App < Sinatra::Base
   $stdout.sync = true
   use Rack::Session::Dalli, {
     :key => 'isucon_session',
-    :cache => Dalli::Client.new('localhost:11211')
+    :cache => Dalli::Client.new('localhost:11212')
   }
 
   enable :logging
