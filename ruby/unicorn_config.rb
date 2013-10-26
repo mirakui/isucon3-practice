@@ -1,4 +1,4 @@
-worker_processes 10
+worker_processes 30
 preload_app true
 
 pid "/tmp/unicorn.pid"
