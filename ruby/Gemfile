@@ -1,6 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'sinatra', '1.4.3'
+gem 'sinatra-contrib'
 gem 'json',    '1.8.0'
 gem 'mysql2',  '0.3.13'
 gem 'unicorn', '4.6.3'

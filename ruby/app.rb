@@ -89,16 +89,20 @@ class Isucon3App < Sinatra::Base
     end
   end
 
+  get '/base' do
+    cache_control :public, max_age: 3600
+    erb :base
+  end
+
   get '/' do
     mysql = connection
     user  = get_user
 
-    total = mysql.query("SELECT count(*) AS c FROM memos WHERE is_private=0").first["c"]
     memos = mysql.query('SELECT title_cache FROM memos WHERE is_private=0 ORDER BY id DESC LIMIT 100')
-    erb :index, :layout => :base, :locals => {
+    #erb :index, :layout => :base, :locals => {
+    erb :index, :locals => {
       :memos => memos,
       :page  => 0,
-      :total => total,
       :user  => user,
     }
   end
@@ -108,16 +112,15 @@ class Isucon3App < Sinatra::Base
     user  = get_user
 
     page  = params["page"].to_i
-    total = mysql.xquery('SELECT count(*) AS c FROM memos WHERE is_private=0').first["c"]
     first_id = mysql.xquery("SELECT id FROM memos WHERE is_private=0 ORDER BY id DESC LIMIT 1 OFFSET #{(page) * 100}").first['id']
     memos = mysql.xquery("SELECT title_cache FROM memos WHERE memos.id <= #{first_id} AND is_private=0 ORDER BY id DESC LIMIT 100")
     if memos.count == 0
       halt 404, "404 Not Found"
     end
-    erb :index, :layout => :base, :locals => {
+    #erb :index, :layout => :base, :locals => {
+    erb :index, :locals => {
       :memos => memos,
       :page  => page,
-      :total => total,
       :user  => user,
     }
   end
@@ -128,12 +131,15 @@ class Isucon3App < Sinatra::Base
     anti_csrf
 
     session.destroy
+    response.delete_cookie 'username'
+    response.delete_cookie 'token'
     redirect "/"
   end
 
   get '/signin' do
     user = get_user
-    erb :signin, :layout => :base, :locals => {
+    #erb :signin, :layout => :base, :locals => {
+    erb :signin, :locals => {
       :user => user,
     }
   end
@@ -148,10 +154,13 @@ class Isucon3App < Sinatra::Base
       session.clear
       session["user_id"] = user["id"]
       session["token"] = Digest::SHA256.hexdigest(Random.new.rand.to_s)
+      #response.set_cookie "username", username
+      #response.set_cookie "token", session['token']
       mysql.xquery("UPDATE users SET last_access=now() WHERE id=?", user["id"])
       redirect "/mypage"
     else
-      erb :signin, :layout => :base, :locals => {
+      #erb :signin, :layout => :base, :locals => {
+      erb :signin, :locals => {
         :user => {},
       }
     end
@@ -163,7 +172,7 @@ class Isucon3App < Sinatra::Base
     require_user(user)
 
     memos = mysql.xquery('SELECT id, content, is_private, created_at, updated_at FROM memos WHERE user=? ORDER BY id DESC', user["id"])
-    erb :mypage, :layout => :base, :locals => {
+    erb :mypage, :locals => {
       :user  => user,
       :memos => memos,
     }
@@ -202,7 +211,8 @@ class Isucon3App < Sinatra::Base
         newer = memos[i + 1] if i < memos.count
       end
     end
-    erb :memo, :layout => :base, :locals => {
+    #erb :memo, :layout => :base, :locals => {
+    erb :memo, :locals => {
       :user  => user,
       :memo  => memo,
       :older => older,
@@ -228,6 +238,13 @@ class Isucon3App < Sinatra::Base
       %Q!UPDATE memos SET title_cache=CONCAT('<a href="%s/memo/', memos.id, '">', SUBSTRING_INDEX(memos.content, "\n", 1), '</a> by ', ?, ' (', memos.created_at, ' +0900)') WHERE memos.id = ?!, user['username'], memo_id
     )
     redirect "/memo/#{memo_id}"
+  end
+
+  get '/total_count' do
+    cache_control :public, max_age: 55
+    mysql = connection
+    total_count = mysql.query("SELECT count(*) AS c FROM memos WHERE is_private=0").first["c"]
+    total_count.to_s
   end
 
   get '/update_memo_title' do

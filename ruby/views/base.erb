@@ -24,17 +24,7 @@ body {
 <div class="nav-collapse">
 <ul class="nav">
 <li><a href="<%= url_for('/') %>">Home</a></li>
-<% if user["username"] %>
-<li><a href="<%= url_for('/mypage') %>">MyPage</a></li>
-<li>
-  <form action="/signout" method="post">
-    <input type="hidden" name="sid" value="<%= session['token'] %>">
-    <input type="submit" value="SignOut">
-  </form>
-</li>
-<% else %>
-<li><a href="<%= url_for('/signin') %>">SignIn</a></li>
-<% end %>
+$user_header$
 </ul>
 </div> <!--/.nav-collapse -->
 </div>
@@ -42,9 +32,10 @@ body {
 </div>
 
 <div class="container">
-<h2>Hello <%= user["username"] %>!</h2>
+<h2>Hello $user_name$!</h2>
 
-<%== yield %>
+<%# yield %>
+$yield$
 
 </div> <!-- /container -->
 
