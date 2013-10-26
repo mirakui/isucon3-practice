@@ -6,6 +6,7 @@ require 'dalli'
 require 'rack/session/dalli'
 require 'erubis'
 require 'tempfile'
+require 'redcarpet'
 
 class Isucon3App < Sinatra::Base
   $stdout.sync = true
@@ -51,6 +52,11 @@ class Isucon3App < Sinatra::Base
     end
 
     def gen_markdown(md)
+      markdown = Redcarpet::Markdown.new(Redcarpet::Render::HTML, :autolink => true, :space_after_headers => true)
+      markdown.render md
+    end
+
+    def gen_markdown_orig(md)
       tmp = Tempfile.open("isucontemp")
       tmp.puts(md)
       tmp.close
@@ -156,7 +162,7 @@ class Isucon3App < Sinatra::Base
     user  = get_user
     require_user(user)
 
-    memos = mysql.xquery('SELECT id, content, is_private, created_at, updated_at FROM memos WHERE user=? ORDER BY created_at DESC', user["id"])
+    memos = mysql.xquery('SELECT id, content, is_private, created_at, updated_at FROM memos WHERE user=? ORDER BY id DESC', user["id"])
     erb :mypage, :layout => :base, :locals => {
       :user  => user,
       :memos => memos,
